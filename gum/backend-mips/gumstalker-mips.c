@@ -169,6 +169,20 @@ gum_stalker_iterator_put_callout (GumStalkerIterator * self,
 }
 
 void
+gum_stalker_set_backpatcher (GumStalker * self,
+                             GumStalkerBackpatcher * backpatcher)
+{
+
+}
+
+void
+gum_stalker_prefetch_backpatch  (GumStalker * self,
+                                 GumBackpatch * backpatch)
+{
+
+}
+
+void
 gum_stalker_set_stats (GumStalker * self,
 			GumStalkerStats * stats)
 {

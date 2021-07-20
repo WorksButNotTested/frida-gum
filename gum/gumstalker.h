@@ -40,6 +40,10 @@ G_DECLARE_FINAL_TYPE (GumCallbackStalkerTransformer,
     gum_callback_stalker_transformer, GUM, CALLBACK_STALKER_TRANSFORMER,
     GObject)
 
+#define GUM_TYPE_STALKER_BACKPATCHER (gum_stalker_backpatcher_get_type ())
+G_DECLARE_INTERFACE (GumStalkerBackpatcher, gum_stalker_backpatcher, GUM,
+    STALKER_BACKPATCHER, GObject)
+
 #define GUM_TYPE_STALKER_STATS (gum_stalker_stats_get_type ())
 G_DECLARE_INTERFACE (GumStalkerStats, gum_stalker_stats, GUM, STALKER_STATS,
     GObject)
@@ -64,6 +68,20 @@ struct _GumStalkerTransformerInterface
   void (* transform_block) (GumStalkerTransformer * self,
       GumStalkerIterator * iterator, GumStalkerOutput * output);
 };
+
+struct _GumBackpatch;
+typedef struct _GumBackpatch GumBackpatch;
+
+typedef void (* GumStalkerBackpatcherNotify) (GumStalkerBackpatcher * self,
+    GumStalker * stalker, GumBackpatch * backpatch, gsize size);
+
+struct _GumStalkerBackpatcherInterface
+{
+  GTypeInterface parent;
+
+  GumStalkerBackpatcherNotify notify;
+};
+
 
 typedef void (* GumStalkerStatsIncrement) (GumStalkerStats * self);
 
@@ -306,6 +324,12 @@ GUM_API void gum_stalker_iterator_put_callout (GumStalkerIterator * self,
 
 GUM_API void gum_stalker_set_counters_enabled (gboolean enabled);
 GUM_API void gum_stalker_dump_counters (void);
+
+GUM_API void gum_stalker_set_backpatcher (GumStalker * self,
+    GumStalkerBackpatcher * backpatcher);
+
+GUM_API void gum_stalker_prefetch_backpatch (GumStalker * self,
+    GumBackpatch * notification);
 
 GUM_API void gum_stalker_set_stats (GumStalker * self, GumStalkerStats * stats);
 

@@ -4801,6 +4801,21 @@ gum_is_bl_imm (guint32 insn)
 }
 
 void
+gum_stalker_set_backpatcher (GumStalker * self,
+                             GumStalkerBackpatcher * backpatcher)
+{
+
+}
+
+void
+gum_stalker_prefetch_backpatch  (GumStalker * self,
+                                 GumBackpatch * backpatch)
+{
+
+}
+
+
+void
 gum_stalker_set_stats (GumStalker * self,
 			GumStalkerStats * stats)
 {
