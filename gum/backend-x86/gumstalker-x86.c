@@ -3746,10 +3746,12 @@ gum_exec_block_backpatch_ret (GumExecBlock * block,
 static void
 gum_exec_block_backpatch_inline_cache (GumExecBlock * block,
                                        GumExecBlock * from,
-                                       gsize ic_offset)
+                                       gsize unaligned_ic_offset)
 {
   gboolean just_unfollowed;
   GumExecCtx * ctx;
+  gsize misalign;
+  gsize align;
   GumIcEntry * ic_entries;
   GumBackpatch backpatch;
 
@@ -3759,7 +3761,9 @@ gum_exec_block_backpatch_inline_cache (GumExecBlock * block,
 
   ctx = block->ctx;
 
-  ic_entries = (GumIcEntry *)((gpointer *)from->code_start + ic_offset);
+  misalign = GPOINTER_TO_SIZE(&from->code_start[unaligned_ic_offset]) & 7;
+  align = (misalign == 0) ? 0 : 8 - misalign;
+  ic_entries = (GumIcEntry *)(&from->code_start[unaligned_ic_offset + align]);
 
   if (gum_exec_ctx_may_now_backpatch (ctx, block))
   {
@@ -3787,7 +3791,7 @@ gum_exec_block_backpatch_inline_cache (GumExecBlock * block,
       backpatch.type = GUM_BACKPATCH_INLINE_CACHE;
       backpatch.to = block->real_start;
       backpatch.from = from->real_start;
-      backpatch.inline_cache.ic_offset = ic_offset;
+      backpatch.inline_cache.ic_offset = unaligned_ic_offset;
       gum_stalker_backpatcher_notify (ctx->backpatcher, ctx->stalker,
           &backpatch, sizeof(backpatch));
     }
@@ -4132,6 +4136,7 @@ gum_exec_block_write_call_invoke_code (GumExecBlock * block,
   const GumAddress call_code_start = cw->pc;
   const GumPrologType opened_prolog = gc->opened_prolog;
   gboolean can_backpatch_statically;
+  gpointer * unaligned_ic_entries = NULL;
   gpointer * ic_entries = NULL;
   gpointer * ic_match = NULL;
   GumExecCtxReplaceCurrentBlockFunc entry_func;
@@ -4194,7 +4199,7 @@ gum_exec_block_write_call_invoke_code (GumExecBlock * block,
      */
     gum_x86_writer_put_jmp_near_label (cw, look_in_cache);
 
-    ic_entries = gum_x86_writer_cur (cw);
+    unaligned_ic_entries = gum_x86_writer_cur (cw);
     /*
      * Align our inline cache entries on an 8-byte boundary, since unaligned
      * entries may span cache lines.
@@ -4392,7 +4397,7 @@ gum_exec_block_write_call_invoke_code (GumExecBlock * block,
         GUM_ADDRESS (gum_exec_block_backpatch_inline_cache), 3,
         GUM_ARG_REGISTER, GUM_REG_XAX,
         GUM_ARG_ADDRESS, GUM_ADDRESS (block),
-        GUM_ARG_ADDRESS, GUM_ADDRESS(ic_entries) -
+        GUM_ARG_ADDRESS, GUM_ADDRESS(unaligned_ic_entries) -
             GUM_ADDRESS(block->code_start));
   }
 
@@ -4413,6 +4418,7 @@ gum_exec_block_write_jmp_transfer_code (GumExecBlock * block,
   const GumAddress code_start = cw->pc;
   const GumPrologType opened_prolog = gc->opened_prolog;
   gboolean can_backpatch_statically;
+  gpointer * unaligned_ic_entries = NULL;
   gpointer * ic_entries = NULL;
   gpointer * ic_match = NULL;
   gconstpointer look_in_cache = cw->code + 1;
@@ -4451,7 +4457,7 @@ gum_exec_block_write_jmp_transfer_code (GumExecBlock * block,
      * Align our inline cache entries on an 8-byte boundary, since unaligned
      * entries may span cache lines.
      */
-    ic_entries = gum_x86_writer_cur (cw);
+    unaligned_ic_entries = gum_x86_writer_cur (cw);
     if ((GPOINTER_TO_SIZE (ic_entries) & 7) != 0)
     {
       gum_x86_writer_put_bytes (cw, (guint8 *) &null_ptr,
@@ -4565,7 +4571,7 @@ gum_exec_block_write_jmp_transfer_code (GumExecBlock * block,
         GUM_ADDRESS (gum_exec_block_backpatch_inline_cache), 3,
         GUM_ARG_REGISTER, GUM_REG_XAX,
         GUM_ARG_ADDRESS, GUM_ADDRESS (block),
-        GUM_ARG_ADDRESS, GUM_ADDRESS(ic_entries) -
+        GUM_ARG_ADDRESS, GUM_ADDRESS(unaligned_ic_entries) -
             GUM_ADDRESS(block->code_start));
   }
 
