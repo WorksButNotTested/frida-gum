@@ -96,6 +96,9 @@ TESTLIST_BEGIN (stalker)
 #ifdef HAVE_LINUX
   TESTENTRY (prefetch)
 #endif
+#ifdef HAVE_I386
+  TESTENTRY (ic_var);
+#endif
 TESTLIST_END ()
 
 static gpointer run_stalked_briefly (gpointer data);
@@ -2843,4 +2846,32 @@ prefetch_read_blocks (int fd,
   }
 }
 
+#endif
+
+#ifdef HAVE_I386
+TESTCASE (ic_var)
+{
+  GumMemoryRange runner_range;
+  GumStalker * stalker;
+
+  runner_range.base_address = 0;
+  runner_range.size = 0;
+  gum_process_enumerate_modules (store_range_of_test_runner, &runner_range);
+  g_assert_cmpuint (runner_range.base_address, !=, 0);
+  g_assert_cmpuint (runner_range.size, !=, 0);
+
+  /* Setup a new one with an increased number of ic_entries */
+  stalker = gum_stalker_new_with_ic_entries (1024);
+
+  gum_stalker_follow_me (stalker, NULL, NULL);
+  pretend_workload (&runner_range);
+  gum_stalker_unfollow_me (stalker);
+
+  /* Delete the original stalker in the fixture */
+  while (gum_stalker_garbage_collect (stalker))
+    g_usleep (10000);
+
+  g_object_unref (stalker);
+
+}
 #endif
