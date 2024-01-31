@@ -40,6 +40,9 @@
 #ifdef HAVE_ASM_PTRACE_H
 # include <asm/ptrace.h>
 #endif
+#if defined (HAVE_LINUX)
+#include <sys/resource.h>
+#endif
 #include <sys/socket.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
@@ -231,8 +234,8 @@ static gint gum_do_modify_thread (gpointer data);
 static gboolean gum_await_ack (gint fd, GumModifyThreadAck expected_ack);
 static void gum_put_ack (gint fd, GumModifyThreadAck ack);
 
-static void gum_store_cpu_context (GumThreadId thread_id,
-    GumCpuContext * cpu_context, gpointer user_data);
+static void gum_store_context (const GumCpuContext * cpu_context,
+    gpointer user_data);
 
 static void gum_do_enumerate_modules (const gchar * libc_name,
     GumFoundModuleFunc func, gpointer user_data);
@@ -1014,10 +1017,13 @@ _gum_process_enumerate_threads (GumFoundThreadFunc func,
 {
   GDir * dir;
   const gchar * name;
+  GumStalker * stalker;
   gboolean carry_on = TRUE;
 
   dir = g_dir_open ("/proc/self/task", 0, NULL);
   g_assert (dir != NULL);
+
+  stalker = gum_stalker_new ();
 
   while (carry_on && (name = g_dir_read_name (dir)) != NULL)
   {
@@ -1031,25 +1037,43 @@ _gum_process_enumerate_threads (GumFoundThreadFunc func,
 
     if (gum_thread_read_state (details.id, &details.state))
     {
-      if (gum_process_modify_thread (details.id, gum_store_cpu_context,
-            &details.cpu_context, GUM_MODIFY_THREAD_FLAGS_ABORT_SAFELY))
-      {
-        carry_on = func (&details, user_data);
-      }
+        details.user_time = 0;
+        if (gum_stalker_run_on_thread_sync(stalker, details.id, 
+                gum_store_context, &details))
+        {
+            carry_on = func(&details, user_data);
+        }
     }
 
     g_free (thread_name);
   }
 
+  while (gum_stalker_garbage_collect (stalker))
+    g_usleep (10000);
+
+  g_object_unref (stalker);
+
   g_dir_close (dir);
 }
 
 static void
-gum_store_cpu_context (GumThreadId thread_id,
-                       GumCpuContext * cpu_context,
-                       gpointer user_data)
+gum_store_context (const GumCpuContext * cpu_context,
+                   gpointer user_data)
 {
-  memcpy (user_data, cpu_context, sizeof (GumCpuContext));
+  GumThreadDetails * details = (GumThreadDetails *) user_data;
+  guint64 user_time = 0;
+  
+#if defined (HAVE_LINUX)
+  struct rusage usage;
+
+  if (getrusage(RUSAGE_THREAD, &usage) == 0)
+  {
+    user_time = (usage.ru_utime.tv_sec * 1000000)
+      + usage.ru_utime.tv_usec;
+  }
+#endif
+  details->user_time = user_time;
+  memcpy (&details->cpu_context, cpu_context, sizeof (GumCpuContext));
 }
 
 gboolean

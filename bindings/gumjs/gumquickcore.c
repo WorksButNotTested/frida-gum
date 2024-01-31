@@ -5679,6 +5679,7 @@ gum_quick_core_setup_atoms (GumQuickCore * self)
   GUM_SETUP_ATOM (toolchain);
   GUM_SETUP_ATOM (traps);
   GUM_SETUP_ATOM (type);
+  GUM_SETUP_ATOM (userTime);
   GUM_SETUP_ATOM (value);
   GUM_SETUP_ATOM (written);
 
@@ -5755,6 +5756,7 @@ gum_quick_core_teardown_atoms (GumQuickCore * self)
   GUM_TEARDOWN_ATOM (toolchain);
   GUM_TEARDOWN_ATOM (traps);
   GUM_TEARDOWN_ATOM (type);
+  GUM_TEARDOWN_ATOM (userTime);
   GUM_TEARDOWN_ATOM (value);
   GUM_TEARDOWN_ATOM (written);
 

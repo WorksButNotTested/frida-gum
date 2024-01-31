@@ -258,6 +258,7 @@ _gum_process_enumerate_threads (GumFoundThreadFunc func,
         gum_process_modify_thread (details.id, gum_store_cpu_context,
           &details.cpu_context, GUM_MODIFY_THREAD_FLAGS_ABORT_SAFELY))
     {
+      details.user_time = 0;
       carry_on = func (&details, user_data);
     }
 

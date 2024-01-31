@@ -197,6 +197,7 @@ TESTLIST_BEGIN (script)
     TESTENTRY (process_threads_can_be_enumerated)
     TESTENTRY (process_threads_can_be_enumerated_legacy_style)
     TESTENTRY (process_threads_have_names)
+    TESTENTRY (process_threads_have_time)
     TESTENTRY (process_modules_can_be_enumerated)
     TESTENTRY (process_modules_can_be_enumerated_legacy_style)
     TESTENTRY (process_module_can_be_looked_up_from_address)
@@ -5103,6 +5104,64 @@ TESTCASE (process_threads_have_names)
 
   g_async_queue_unref (ctx.sleeper_messages);
   g_async_queue_unref (ctx.controller_messages);
+}
+
+TESTCASE (process_threads_have_time)
+{
+  GThread * thread;
+  GumThreadId thread_id;
+  volatile gboolean done = FALSE;
+  guint64 user_time_a, user_time_b;
+
+#ifdef HAVE_LINUX
+  if (!check_exception_handling_testable ())
+    return;
+#endif
+
+#ifdef HAVE_MIPS
+  if (!g_test_slow ())
+  {
+    g_print ("<skipping, run in slow mode> ");
+    return;
+  }
+#endif
+
+  thread = create_sleeping_dummy_thread_sync (&done, &thread_id);
+
+  COMPILE_AND_LOAD_SCRIPT (
+      "Thread.sleep(0.25);"
+      GUM_PTR_CONST".writeU64("
+      "  Process.enumerateThreads()"
+      "    .find(t => t.id == " GUM_PTR_CONST ")"
+      "    .userTime);",
+      &user_time_a,
+      thread_id
+      );
+
+  EXPECT_NO_MESSAGES ();
+
+  COMPILE_AND_LOAD_SCRIPT (
+      "Thread.sleep(0.25);"
+      GUM_PTR_CONST".writeU64("
+      "  Process.enumerateThreads()"
+      "    .find(t => t.id == " GUM_PTR_CONST ")"
+      "    .userTime);",
+      &user_time_b,
+      thread_id
+      );
+
+  EXPECT_NO_MESSAGES ();
+
+#if defined (HAVE_LINUX)
+    g_assert_cmpuint (user_time_a, !=, 0);
+    g_assert_cmpuint (user_time_b, >, user_time_a);
+#else
+    g_assert_cmpuint (user_time_a, ==, 0);
+    g_assert_cmpuint (user_time_b, ==, 0);
+#endif
+
+  done = TRUE;
+  g_thread_join (thread);
 }
 
 static gpointer

@@ -189,6 +189,7 @@ _gum_process_enumerate_threads (GumFoundThreadFunc func,
 
       if (gum_windows_get_thread_details (entry.th32ThreadID, &details))
       {
+        details.user_time = 0;
         if (!func (&details, user_data))
           break;
       }

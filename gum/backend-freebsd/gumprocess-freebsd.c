@@ -415,6 +415,7 @@ _gum_process_enumerate_threads (GumFoundThreadFunc func,
     {
       bzero (&details.cpu_context, sizeof (details.cpu_context));
     }
+    details.user_time = 0;
 
     if (!func (&details, user_data))
       break;

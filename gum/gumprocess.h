@@ -62,6 +62,7 @@ struct _GumThreadDetails
   GumThreadId id;
   const gchar * name;
   GumThreadState state;
+  guint64 user_time;
   GumCpuContext cpu_context;
 };
 

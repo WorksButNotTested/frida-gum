@@ -36,6 +36,7 @@ TESTLIST_BEGIN (process)
   TESTENTRY (process_threads)
   TESTENTRY (process_threads_exclude_cloaked)
   TESTENTRY (process_threads_should_include_name)
+  TESTENTRY (process_threads_should_include_time)
   TESTENTRY (process_modules)
   TESTENTRY (process_ranges)
   TESTENTRY (process_ranges_exclude_cloaked)
@@ -284,6 +285,46 @@ check_thread_enumeration_testable (void)
   }
 
   return TRUE;
+}
+
+TESTCASE (process_threads_should_include_time)
+{
+  volatile gboolean done = FALSE;
+  GThread * thread;
+  GumThreadDetails ctx = {0};
+  guint64 user_time;
+
+  if (!check_thread_enumeration_testable ())
+    return;
+
+  thread = create_sleeping_dummy_thread_sync ("user_time", &done, &ctx.id);
+
+  /* Sleep for a short while to let the other thread wake and run */
+  g_usleep (250000);
+
+  gum_process_enumerate_threads (thread_collect_if_matching_id, &ctx);
+  user_time = ctx.user_time;
+
+#if defined (HAVE_LINUX)
+  g_assert_cmpuint (user_time, !=, 0);
+#else
+  g_assert_cmpuint (user_time, ==, 0);
+#endif
+
+  /* Sleep for a short while to let the other thread wake and run */
+  g_usleep (250000);
+
+  gum_process_enumerate_threads (thread_collect_if_matching_id, &ctx);
+#if defined (HAVE_LINUX)
+  g_assert_cmpuint (ctx.user_time, >, user_time);
+#else
+  g_assert_cmpuint (ctx.user_time, ==, 0);
+#endif
+
+  done = TRUE;
+  g_thread_join (thread);
+
+  g_free ((gpointer) ctx.name);
 }
 
 TESTCASE (process_modules)
@@ -1150,6 +1191,13 @@ sleeping_dummy (gpointer data)
   pthread_setname_np (pthread_self (), sync_data->name);
 #endif
 
+  /* Do some work and use some CPU cycles */
+  static guint no_opt = 0;
+  for (guint i = 0; i < 1000000; i++)
+  {
+      no_opt = no_opt + i;
+  }
+
   g_mutex_lock (&sync_data->mutex);
   sync_data->started = TRUE;
   sync_data->thread_id = gum_process_get_current_thread_id ();
@@ -1197,6 +1245,7 @@ thread_collect_if_matching_id (const GumThreadDetails * details,
   ctx->name = g_strdup (details->name);
   ctx->state = details->state;
   ctx->cpu_context = details->cpu_context;
+  ctx->user_time = details->user_time;
 
   return FALSE;
 }

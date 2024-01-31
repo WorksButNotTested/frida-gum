@@ -275,6 +275,7 @@ gum_emit_thread (const GumThreadDetails * details,
   auto cpu_context =
       _gum_v8_cpu_context_new_immutable (&details->cpu_context, core);
   _gum_v8_object_set (thread, "context", cpu_context, core);
+  _gum_v8_object_set (thread, "userTime", Number::New (isolate, details->user_time), core);
 
   auto proceed = mc->OnMatch (thread);
 

@@ -165,6 +165,7 @@ struct _GumQuickCore
   GUM_DECLARE_ATOM (toolchain);
   GUM_DECLARE_ATOM (traps);
   GUM_DECLARE_ATOM (type);
+  GUM_DECLARE_ATOM (userTime);
   GUM_DECLARE_ATOM (value);
   GUM_DECLARE_ATOM (written);
 

@@ -1537,6 +1537,7 @@ gum_darwin_enumerate_threads (mach_port_t task,
       details.state = gum_thread_state_from_darwin (info.run_state);
 
       gum_darwin_parse_unified_thread_state (&state, &details.cpu_context);
+      details.user_time = 0;
 
       if (!func (&details, user_data))
         break;
