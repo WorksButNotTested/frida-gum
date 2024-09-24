@@ -434,6 +434,7 @@ gum_exceptor_backend_on_signal (int sig,
   {
     case SIGSEGV:
     case SIGBUS:
+    case SIGTRAP:
       if (siginfo->si_addr == ed.address)
         md->operation = GUM_MEMOP_EXECUTE;
       else

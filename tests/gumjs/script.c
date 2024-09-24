@@ -48,7 +48,8 @@ TESTLIST_BEGIN (script)
     TESTENTRY (thread_can_be_forced_to_sleep)
     TESTENTRY (thread_backtrace_can_be_captured_with_limit)
     TESTENTRY (hardware_breakpoint_can_be_set)
-    TESTENTRY (hardware_watchpoint_can_be_set)
+    TESTENTRY (hardware_read_watchpoint_can_be_set)
+    TESTENTRY (hardware_write_watchpoint_can_be_set)
   TESTGROUP_END ()
 
   TESTGROUP_BEGIN ("RPC")
@@ -6565,7 +6566,47 @@ TESTCASE (hardware_breakpoint_can_be_set)
   EXPECT_NO_MESSAGES ();
 }
 
-TESTCASE (hardware_watchpoint_can_be_set)
+TESTCASE (hardware_read_watchpoint_can_be_set)
+{
+  volatile guint32 val = 42;
+  G_GNUC_UNUSED volatile guint tmp;
+
+#if defined (HAVE_FREEBSD) || defined (HAVE_QNX)
+  if (!g_test_slow ())
+  {
+    g_print ("<skipping, run in slow mode> ");
+    return;
+  }
+#endif
+
+  COMPILE_AND_LOAD_SCRIPT (
+      "const threads = Process.enumerateThreads();\n"
+      "Process.setExceptionHandler(e => {\n"
+      "  if (!['breakpoint', 'single-step'].includes(e.type))\n"
+      "    return false;\n"
+      "  send('trapped');\n"
+#ifdef HAVE_LINUX
+      "  if (e.memory !== undefined) {"
+      "    send(e.memory.address);"
+      "    send(e.memory.operation);"
+      "  }"
+#endif
+      "  threads.forEach(t => t.unsetHardwareWatchpoint(0));\n"
+      "  return true;\n"
+      "});\n"
+      "threads.forEach(t => t.setHardwareWatchpoint(0, " GUM_PTR_CONST ", 4,"
+        "'r'));",
+      &val);
+  EXPECT_NO_MESSAGES ();
+
+  tmp = val;
+  EXPECT_SEND_MESSAGE_WITH ("\"trapped\"");
+  EXPECT_SEND_MESSAGE_WITH ("\"0x%" G_GSIZE_MODIFIER "x\"", &val);
+  EXPECT_SEND_MESSAGE_WITH ("\"read\"");
+  EXPECT_NO_MESSAGES ();
+}
+
+TESTCASE (hardware_write_watchpoint_can_be_set)
 {
   guint32 val = 42;
 
@@ -6583,6 +6624,12 @@ TESTCASE (hardware_watchpoint_can_be_set)
       "  if (!['breakpoint', 'single-step'].includes(e.type))\n"
       "    return false;\n"
       "  send('trapped');\n"
+#ifdef HAVE_LINUX
+      "  if (e.memory !== undefined) {"
+      "    send(e.memory.address);"
+      "    send(e.memory.operation);"
+      "  }"
+#endif      
       "  threads.forEach(t => t.unsetHardwareWatchpoint(0));\n"
       "  return true;\n"
       "});\n"
@@ -6593,6 +6640,8 @@ TESTCASE (hardware_watchpoint_can_be_set)
 
   val = 1337;
   EXPECT_SEND_MESSAGE_WITH ("\"trapped\"");
+  EXPECT_SEND_MESSAGE_WITH ("\"0x%" G_GSIZE_MODIFIER "x\"", &val);
+  EXPECT_SEND_MESSAGE_WITH ("\"write\"");
   EXPECT_NO_MESSAGES ();
 }
 
