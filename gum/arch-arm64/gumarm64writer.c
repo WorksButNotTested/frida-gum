@@ -1992,15 +1992,21 @@ gum_arm64_writer_commit_literals (GumArm64Writer * self)
     if (r->width != GUM_LITERAL_64BIT)
       continue;
 
+    /*
+     * Whilst instructions in aarch64 are always in little endian (even on 
+     * big-endian systems), the data is in native endian. Thus we don't need
+     * to make use of the GINT64_FROM_LE and GINT64_TO_LE when accessing the
+     * "slot" below.
+     */
     for (slot = first_slot; slot != last_slot; slot++)
     {
-      if (GINT64_FROM_LE (*slot) == r->val)
+      if (*slot == r->val)
         break;
     }
 
     if (slot == last_slot)
     {
-      *slot = GINT64_TO_LE (r->val);
+      *slot = r->val;
       last_slot = slot + 1;
     }
 
@@ -2024,15 +2030,21 @@ gum_arm64_writer_commit_literals (GumArm64Writer * self)
     if (r->width != GUM_LITERAL_32BIT)
       continue;
 
+    /*
+     * Whilst instructions in aarch64 are always in little endian (even on 
+     * big-endian systems), the data is in native endian. Thus we don't need
+     * to make use of the GINT64_FROM_LE and GINT64_TO_LE when accessing the
+     * "slot" below.
+     */
     for (slot = first_slot; slot != last_slot; slot++)
     {
-      if (GINT32_FROM_LE (*slot) == r->val)
+      if (*slot == r->val)
         break;
     }
 
     if (slot == last_slot)
     {
-      *slot = GINT32_TO_LE (r->val);
+      *slot = r->val;
       last_slot = slot + 1;
     }
 
