@@ -268,11 +268,16 @@ REPORT_TESTCASE (xml_thread_ordering)
   instrument_simple_functions (fixture);
 
   simple_1 (fixture->fake_sampler);
+
+  /*
+   * These threads must run in series since our fake sampler isn't re-entrant.
+   */
   t1 = g_thread_new ("profiler-test-helper-a", (GThreadFunc) simple_2,
       fixture->fake_sampler);
+  g_thread_join (t1);
+
   t2 = g_thread_new ("profiler-test-helper-b", (GThreadFunc) simple_3,
       fixture->fake_sampler);
-  g_thread_join (t1);
   g_thread_join (t2);
 
   assert_same_xml (fixture,
