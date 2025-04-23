@@ -400,7 +400,15 @@ TESTCASE (linux_get_cpu_from_auxv_null_32bit)
 #if defined (HAVE_I386)
   cpu32 = GUM_CPU_IA32;
 #elif defined (HAVE_ARM) || defined (HAVE_ARM64)
+  /*
+   * If we are building for ILP32, on this platform we only support ILP32
+   * processes and so we can assume that they are all 64-bit.
+   */
+# if defined(HAVE_ARM64) && !(defined (__LP64__) || defined (_WIN64))
+  cpu32 = GUM_CPU_ARM64;
+# else
   cpu32 = GUM_CPU_ARM;
+# endif
 #elif defined (HAVE_MIPS)
   cpu32 = GUM_CPU_MIPS;
 #else
@@ -455,7 +463,15 @@ TESTCASE (linux_get_cpu_from_auxv_representative_32bit)
 #if defined (HAVE_I386)
   cpu32 = GUM_CPU_IA32;
 #elif defined (HAVE_ARM) || defined (HAVE_ARM64)
+  /*
+   * If we are building for ILP32, on this platform we only support ILP32
+   * processes and so we can assume that they are all 64-bit.
+   */
+# if defined(HAVE_ARM64) && !(defined (__LP64__) || defined (_WIN64))
+  cpu32 = GUM_CPU_ARM64;
+# else
   cpu32 = GUM_CPU_ARM;
+# endif
 #elif defined (HAVE_MIPS)
   cpu32 = GUM_CPU_MIPS;
 #else
