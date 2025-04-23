@@ -1317,8 +1317,8 @@ gum_linux_get_threads_from_list (const GumLinuxPThreadSpec * spec,
     if (prev != current)
       goto beach;
 
-    list = g_list_append (list, GSIZE_TO_POINTER (current));
-
+    if (current != first)
+      list = g_list_append (list, GSIZE_TO_POINTER (current));
     current = next;
     num_threads++;
 
@@ -4357,7 +4357,11 @@ gum_libc_clone (GumCloneFunc child_func,
                 pid_t * child_tidptr)
 {
   gssize result;
+#if defined (HAVE_ARM64)
+  guint64 * child_sp = child_stack;
+#else
   gpointer * child_sp = child_stack;
+#endif
 
 #if defined (HAVE_I386) && GLIB_SIZEOF_VOID_P == 4
   *(--child_sp) = arg;
@@ -4516,13 +4520,12 @@ gum_libc_clone (GumCloneFunc child_func,
     result = r0;
   }
 #elif defined (HAVE_ARM64)
-  *(--child_sp) = child_func;
-  *(--child_sp) = arg;
-
+  *(--child_sp) = GPOINTER_TO_SIZE (child_func);
+  *(--child_sp) = GPOINTER_TO_SIZE (arg);
   {
     register        gssize x8 asm ("x8") = __NR_clone;
     register          gint x0 asm ("x0") = flags;
-    register    gpointer * x1 asm ("x1") = child_sp;
+    register    guint64 * x1 asm ("x1") = child_sp;
     register       pid_t * x2 asm ("x2") = parent_tidptr;
     register GumUserDesc * x3 asm ("x3") = tls;
     register       pid_t * x4 asm ("x4") = child_tidptr;
