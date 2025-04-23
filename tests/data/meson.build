@@ -16,7 +16,12 @@ if host_os_family != 'windows'
     if host_abi == 'arm' or host_abi == 'armhf'
       host_abi = 'armbe8'
     elif host_abi == 'arm64'
-      host_abi = 'arm64be'
+      ptr_size = cc.sizeof('void*')
+      if ptr_size == 4
+        host_abi = 'arm64beilp32'
+      else
+        host_abi = 'arm64be'
+      endif
     endif
   endif
 
